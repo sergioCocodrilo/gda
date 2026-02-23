@@ -138,6 +138,7 @@ def main():
 
 
     df = filter_maintenance_data(df, centers=cm, buildings=None)
+    breakpoint()
     cols_to_sum = [
         'A.- Cob',
         'B.- NC',
@@ -160,7 +161,80 @@ def main():
     df_m, df_a = process_data(df, cols_to_sum, ids)
     os.makedirs("docs", exist_ok=True)
     plot_interactive_data(df_m, cols_to_sum, "docs/index.html")
+    plot_buildings_dashboard(df_m, cols_to_sum, "docs/buildings.html")
     return df_m, df_a
 
+def plot_buildings_dashboard(df, columns_to_plot, file_path):
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=("Escala lineal", "Escala logarítmica (permite ver valores pequeños)"),
+        vertical_spacing=0.12
+    )
+
+    months = sorted(df['month'].unique())
+    buildings = ["All"] + sorted(df['CLLI_REAL'].unique())
+
+    # Initial data (first column, all buildings)
+    initial_col = columns_to_plot[0]
+    initial_dff = df
+
+    # Create initial traces
+    for m in months:
+        month_df = initial_dff[initial_dff['month'] == m]
+        fig.add_trace(go.Bar(x=month_df['EDIFICIO'], y=month_df[initial_col], name=f"{m}", hovertext=month_df['CLLI_REAL']), row=1, col=1)
+        fig.add_trace(go.Bar(x=month_df['EDIFICIO'], y=month_df[initial_col], name=f"{m}", showlegend=False, hovertext=month_df['CLLI_REAL']), row=2, col=1)
+
+    buttons = []
+    for col in columns_to_plot:
+        for building in buildings:
+            if building == "All":
+                dff = df
+            else:
+                dff = df[df['CLLI_REAL'] == building]
+            
+            x_vals_for_update = []
+            y_vals_for_update = []
+            hover_text_for_update = []
+
+            for m in months:
+                month_df = dff[dff['month'] == m]
+                x_vals_for_update.append(month_df['EDIFICIO']) # for linear
+                x_vals_for_update.append(month_df['EDIFICIO']) # for log
+                y_vals_for_update.append(month_df[col]) # for linear
+                y_vals_for_update.append(month_df[col]) # for log
+                hover_text_for_update.append(month_df['CLLI_REAL']) # for linear
+                hover_text_for_update.append(month_df['CLLI_REAL']) # for log
+            
+            buttons.append(dict(
+                label=f"{col} - {building}",
+                method="restyle",
+                args=[{"x": x_vals_for_update, "y": y_vals_for_update, "hovertext": hover_text_for_update}]
+            ))
+
+    fig.update_layout(
+        updatemenus=[dict(
+            active=0,
+            buttons=buttons,
+            direction="down",
+            pad={"r": 10, "t": 10},
+            showactive=True,
+            x=0.1,
+            xanchor="left",
+            y=1.1,
+            yanchor="top"
+        )]
+    )
+
+    # Formatting
+    fig.update_yaxes(type="log", row=2, col=1)
+    fig.update_layout(
+        height=900,
+        title_text="Análisis de incidencias (eje Y) por central (eje X) y meses",
+        barmode='group',
+        legend_title="Meses"
+    )
+    fig.write_html(file_path)
+
+
 if __name__ == "__main__":
-    main_df_m, main_df_a = main() 
+    main_df_m, main_df_a = main()
