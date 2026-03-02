@@ -67,8 +67,7 @@ function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCentro, setSelectedCentro] = useState<string>('All');
-  const [selectedBuilding, setSelectedBuilding] = useState<string>('All');
-  const [selectedEdificio, setSelectedEdificio] = useState<string>('All');
+  const [selectedBuildingEdificio, setSelectedBuildingEdificio] = useState<string>('All');
   const [selectedColumn, setSelectedColumn] = useState<string>(numericColumns[0]);
 
   useEffect(() => {
@@ -103,15 +102,10 @@ function App() {
     fetchData();
   }, []);
 
-  // Reset child filters when parent changes
+  // Reset child filter when parent changes
   useEffect(() => {
-    setSelectedBuilding('All');
-    setSelectedEdificio('All');
+    setSelectedBuildingEdificio('All');
   }, [selectedCentro]);
-
-  useEffect(() => {
-    setSelectedEdificio('All');
-  }, [selectedBuilding]);
 
   // Derivations for filters
   const centros = ['All', ...Array.from(new Set(data.map(item => item['CENTRO DE MANTENIMIENTO']))).filter(Boolean).sort()];
@@ -120,17 +114,12 @@ function App() {
     selectedCentro === 'All' || item['CENTRO DE MANTENIMIENTO'] === selectedCentro
   );
 
-  const buildings = ['All', ...Array.from(new Set(centroFilteredData.map(item => item.CLLI_REAL))).filter(Boolean).sort()];
-  
-  const clliFilteredData = centroFilteredData.filter(item => 
-    selectedBuilding === 'All' || item.CLLI_REAL === selectedBuilding
-  );
+  const buildingEdificioOptions = ['All', ...Array.from(new Set(centroFilteredData.map(item => `${item.CLLI_REAL} - ${item.EDIFICIO}`))).filter(Boolean).sort()];
 
-  const edificios = ['All', ...Array.from(new Set(clliFilteredData.map(item => item.EDIFICIO))).filter(Boolean).sort()];
-
-  const filteredData = clliFilteredData.filter(item =>
-    selectedEdificio === 'All' || item.EDIFICIO === selectedEdificio
-  );
+  const filteredData = centroFilteredData.filter(item => {
+    const combined = `${item.CLLI_REAL} - ${item.EDIFICIO}`;
+    return selectedBuildingEdificio === 'All' || combined === selectedBuildingEdificio;
+  });
 
   return (
     <div className="bg-gray-900 text-white min-h-screen">
@@ -159,28 +148,15 @@ function App() {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="building-filter" className="block mb-2 text-sm font-medium">Filter by Building (CLLI_REAL)</label>
+                  <label htmlFor="building-edificio-filter" className="block mb-2 text-sm font-medium">Filter by Building & Edificio</label>
                   <select 
-                    id="building-filter"
-                    value={selectedBuilding}
-                    onChange={(e) => setSelectedBuilding(e.target.value)}
+                    id="building-edificio-filter"
+                    value={selectedBuildingEdificio}
+                    onChange={(e) => setSelectedBuildingEdificio(e.target.value)}
                     className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   >
-                    {buildings.map(building => (
-                      <option key={building} value={building}>{building}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="edificio-filter" className="block mb-2 text-sm font-medium">Filter by Edificio</label>
-                  <select 
-                    id="edificio-filter"
-                    value={selectedEdificio}
-                    onChange={(e) => setSelectedEdificio(e.target.value)}
-                    className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                  >
-                    {edificios.map(edificio => (
-                      <option key={edificio} value={edificio}>{edificio}</option>
+                    {buildingEdificioOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
                 </div>
