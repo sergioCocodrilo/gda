@@ -132,13 +132,12 @@ def filter_maintenance_data(df, centers=None, buildings=None):
     return filtered_df
 
 def main():
-    path = "data/data" # Update this path
+    path = "data/caltraf" # Update this path
     df = read_files_in_dir(path)
     cm = 'CM ABASTOS'
 
 
     df = filter_maintenance_data(df, centers=cm, buildings=None)
-    breakpoint()
     cols_to_sum = [
         'A.- Cob',
         'B.- NC',

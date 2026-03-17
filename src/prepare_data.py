@@ -6,7 +6,7 @@ def prepare_data():
     Reads all .xlsx files from the 'data/data' directory, extracts specified columns,
     and saves the data as JSON files in 'vite-dashboard/public/data'.
     """
-    input_dir = "data/data"
+    input_dir = "data/caltraf"
     output_dir = "vite-dashboard/public/data"
     os.makedirs(output_dir, exist_ok=True)
 

@@ -11,14 +11,15 @@ const Chart: React.FC<ChartProps> = ({ data, column }) => {
 
   useEffect(() => {
     if (chartRef.current && data.length > 0) {
-      const months = [...new Set(data.map(item => item.month))].sort();
+      const yearMonths = [...new Set(data.map(item => `${item.year}-${item.month}`))].sort();
       
-      const traces = months.map(month => {
-        const monthData = data.filter(item => item.month === month);
+      const traces = yearMonths.map(ym => {
+        const [year, month] = ym.split('-');
+        const monthData = data.filter(item => item.year === year && item.month === month);
         return {
           x: monthData.map(item => item.EDIFICIO),
           y: monthData.map(item => item[column]),
-          name: `Month ${month}`,
+          name: `${year}-${month}`,
           type: 'bar',
         };
       });

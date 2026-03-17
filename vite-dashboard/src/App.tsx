@@ -3,6 +3,7 @@ import './App.css';
 import { DataTable } from './DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import Chart from './Chart';
+import LineChart from './LineChart';
 
 // Define the type for a single row of data
 interface DataRow {
@@ -69,25 +70,31 @@ function App() {
   const [selectedCentro, setSelectedCentro] = useState<string>('All');
   const [selectedBuildingEdificio, setSelectedBuildingEdificio] = useState<string>('All');
   const [selectedColumn, setSelectedColumn] = useState<string>(numericColumns[0]);
+  const [monthsCount, setMonthsCount] = useState<number>(12);
+  const [viewMode, setViewMode] = useState<'bar' | 'line'>('bar');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const fileNames = Array.from({ length: 12 }, (_, i) => {
-          const month = (i + 1).toString().padStart(2, '0');
-          return `Q25${month}`;
-        });
-
+        // We'll try to fetch data for the last 3 years (2024, 2025 and 2026) 
+        // to show we can handle more data if it exists.
+        const years = ['24', '25', '26'];
         const allData: DataRow[] = [];
-        for (const fileName of fileNames) {
-          const response = await fetch(`${import.meta.env.BASE_URL}data/${fileName}.json`);
-          if (!response.ok) {
-            console.warn(`File not found: ${fileName}.json`);
-            continue;
+        
+        for (const year of years) {
+          for (let i = 1; i <= 12; i++) {
+            const month = i.toString().padStart(2, '0');
+            const fileName = `Q${year}${month}`;
+            try {
+              const response = await fetch(`${import.meta.env.BASE_URL}data/${fileName}.json`);
+              if (!response.ok) continue;
+              const jsonData: DataRow[] = await response.json();
+              allData.push(...jsonData);
+            } catch (err) {
+              // Ignore missing files
+            }
           }
-          const jsonData: DataRow[] = await response.json();
-          allData.push(...jsonData);
         }
         
         setData(allData);
@@ -107,10 +114,24 @@ function App() {
     setSelectedBuildingEdificio('All');
   }, [selectedCentro]);
 
-  // Derivations for filters
-  const centros = ['All', ...Array.from(new Set(data.map(item => item['CENTRO DE MANTENIMIENTO']))).filter(Boolean).sort()];
+  // Sort and filter data by date
+  const sortedData = [...data].sort((a, b) => {
+    const dateA = `${a.year}-${a.month}`;
+    const dateB = `${b.year}-${b.month}`;
+    return dateA.localeCompare(dateB);
+  });
 
-  const centroFilteredData = data.filter(item =>
+  const uniqueMonths = Array.from(new Set(sortedData.map(item => `${item.year}-${item.month}`))).sort();
+  const selectedMonths = uniqueMonths.slice(-monthsCount);
+
+  const timeFilteredData = sortedData.filter(item => 
+    selectedMonths.includes(`${item.year}-${item.month}`)
+  );
+
+  // Derivations for filters
+  const centros = ['All', ...Array.from(new Set(timeFilteredData.map(item => item['CENTRO DE MANTENIMIENTO']))).filter(Boolean).sort()];
+
+  const centroFilteredData = timeFilteredData.filter(item =>
     selectedCentro === 'All' || item['CENTRO DE MANTENIMIENTO'] === selectedCentro
   );
 
@@ -132,8 +153,40 @@ function App() {
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-1 bg-gray-800 p-4 rounded">
+              <h2 className="text-xl font-semibold mb-2">Visualización</h2>
+              <div className="flex space-x-2 mb-4">
+                <button
+                  onClick={() => setViewMode('bar')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                    viewMode === 'bar' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Gráfico de Barras
+                </button>
+                <button
+                  onClick={() => setViewMode('line')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                    viewMode === 'line' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Gráfico de Líneas
+                </button>
+              </div>
               <h2 className="text-xl font-semibold mb-2">Filtros</h2>
               <div className="space-y-4">
+                <div>
+                  <label htmlFor="months-filter" className="block mb-2 text-sm font-medium">Show Last N Months</label>
+                  <select 
+                    id="months-filter"
+                    value={monthsCount}
+                    onChange={(e) => setMonthsCount(Number(e.target.value))}
+                    className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                  >
+                    {[3, 6, 12, 18, 24].map(n => (
+                      <option key={n} value={n}>Last {n} months</option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label htmlFor="centro-filter" className="block mb-2 text-sm font-medium">Filter by Centro de Mantenimiento</label>
                   <select 
@@ -178,7 +231,11 @@ function App() {
             <div className="md:col-span-2 space-y-4">
               <div className="bg-gray-800 p-4 rounded">
                 <h2 className="text-xl font-semibold mb-2">Visualización</h2>
-                <Chart data={filteredData} column={selectedColumn} />
+                {viewMode === 'bar' ? (
+                  <Chart data={filteredData} column={selectedColumn} />
+                ) : (
+                  <LineChart data={filteredData} column={selectedColumn} />
+                )}
               </div>
               <div className="bg-gray-800 p-4 rounded">
                 <h2 className="text-xl font-semibold mb-2">Datos</h2>
